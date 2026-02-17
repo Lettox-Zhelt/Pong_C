@@ -2,10 +2,10 @@
 
 int main() {
   Params params = {
-      .ball = {40, 13, 1, 1, '*'},
-      .field = {80, 25, '#'},
-      .left_rocket = {75, 13, '|'},
-      .right_rocket = {5, 13, '|'},
+      .ball = {40, 13, 1, 1},
+      .field = {80, 25},
+      .left_rocket = {75, 13},
+      .right_rocket = {5, 13},
       .count = {0, 0},
   };
 
