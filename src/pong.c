@@ -28,104 +28,85 @@ void ncurses_setup() {
 }
 
 void game_start(Params* params) {
+  int mover = 0;
   while (1) {
-    char sym;
-    // Delay
-    usleep(200000);
-    // Crear screen & refresh it
-    clear();
-    // refresh();
-
-    // Display players count
-    printw("%20d%40d\n", params->count.player_1, params->count.player_2);
-    // Drawing y line
-    y_line_maker(params);
-    // Getting user input
-    sym = getch();
-    // Validating user input
+    if (mover == 50) mover = 0;
+    // 1. Ввод (без задержки)
+    char sym = getch();
     if (sym == 'q' || sym == 'a' || sym == 'z' || sym == 'k' || sym == 'm' ||
         sym == ' ') {
-      // Processing user input
       switch (sym) {
         case 'q':
-          // Exit
           endwin();
           return;
-          break;
-        case ' ':
-          break;
         case 'a':
-          if (params->right_rocket.y >
-              (params->field.width - (params->field.width - 2))) {
-            params->right_rocket.y--;
-          }
+          if (params->right_rocket.y > 2) params->right_rocket.y--;
           break;
         case 'z':
-          if (params->right_rocket.y < (params->field.width - 1)) {
+          if (params->right_rocket.y < params->field.width - 1)
             params->right_rocket.y++;
-          }
           break;
         case 'k':
-          if (params->left_rocket.y >
-              (params->field.width - (params->field.width - 2))) {
-            params->left_rocket.y--;
-          }
+          if (params->left_rocket.y > 2) params->left_rocket.y--;
           break;
         case 'm':
-          if (params->left_rocket.y < (params->field.width - 1)) {
+          if (params->left_rocket.y < params->field.width - 1)
             params->left_rocket.y++;
-          }
           break;
       }
     }
-    // Processing ball collisions
-    if ((params->ball.x == ((params->left_rocket.x - 1)) &&
+
+    // 2. Физика (столкновения и движение мяча)
+    if ((params->ball.x == params->left_rocket.x - 1 &&
          (params->ball.y == params->left_rocket.y ||
           params->ball.y == params->left_rocket.y - 1 ||
           params->ball.y == params->left_rocket.y + 1)) ||
-        ((params->ball.x == (params->right_rocket.x + 1)) &&
+        (params->ball.x == params->right_rocket.x + 1 &&
          (params->ball.y == params->right_rocket.y ||
           params->ball.y == params->right_rocket.y - 1 ||
           params->ball.y == params->right_rocket.y + 1))) {
-      params->ball.state_x = params->ball.state_x * (-1);
+      params->ball.state_x *= -1;
     }
-    if (params->ball.y == (params->field.width) || (params->ball.y == 1)) {
-      params->ball.state_y = params->ball.state_y * (-1);
+    if (params->ball.y == params->field.width || params->ball.y == 1) {
+      params->ball.state_y *= -1;
+    }
+    if (mover % 5 == 0) {
+      ball_x_mover(params);
+      ball_y_mover(params);
     }
 
-    // Moving ball
-    ball_x_mover(params);
-    ball_y_mover(params);
-
-    // Processing players count
+    // 3. Счёт и условия победы
     if (params->ball.x == 1) {
       params->count.player_2++;
-      params->ball.x = 40, params->ball.y = 13;
+      params->ball.x = 40;
+      params->ball.y = 13;
     }
     if (params->ball.x == 80) {
       params->count.player_1++;
-      params->ball.x = 40, params->ball.y = 13;
+      params->ball.x = 40;
+      params->ball.y = 13;
     }
-    if (params->count.player_2 == 21) {
+    if (params->count.player_1 == 21 || params->count.player_2 == 21) {
       nodelay(stdscr, FALSE);
       clear();
-      refresh();
-      printw("Congratulations, player 2!\nGame Over\n");
+      printw(params->count.player_1 == 21
+                 ? "Congratulations, player 1!\nGame Over\n"
+                 : "Congratulations, player 2!\nGame Over\n");
       refresh();
       getch();
       endwin();
       return;
     }
-    if (params->count.player_1 == 21) {
-      nodelay(stdscr, FALSE);
-      clear();
-      refresh();
-      printw("Congratulations, player 1!\nGame Over\n");
-      refresh();
-      getch();
-      endwin();
-      return;
-    }
+
+    // 4. Отрисовка кадра
+    clear();
+    printw("%20d%40d\n", params->count.player_1, params->count.player_2);
+    y_line_maker(params);
+    refresh();
+
+    // 5. Задержка для управления FPS (20 мс ≈ 50 кадров/с)
+    usleep(20000);
+    mover++;
   }
 }
 
@@ -180,8 +161,9 @@ void y_line_maker(Params* params) {
     printw("\n");
   }
   printw(
-      "\nControlls:\nLeft racket: \"A/Z\" | Right racket: \"K/M\" | Quit: "
+      "\nControls:\nLeft racket: \"A/Z\" | Right racket: \"K/M\" | Quit: "
       "\"Q\"\n");
+  refresh();
 }
 
 // Function to move ball at x axis
