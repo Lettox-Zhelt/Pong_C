@@ -1,16 +1,16 @@
-#include <pong.h>
+#include "pong.h"
 
 int main() {
   Params params = {
       .ball = {40, 13, 1, 1, '*'},
       .field = {80, 25, '#'},
-      .left_rocket = {5, 13, '|'},
-      .right_rocket = {75, 13, '|'},
+      .left_rocket = {75, 13, '|'},
+      .right_rocket = {5, 13, '|'},
       .count = {0, 0},
   };
 
   ncurses_setup();
-
+  game_start(&params);
   // Game start
   endwin();
   return 0;
@@ -27,27 +27,19 @@ void ncurses_setup() {
   nodelay(stdscr, TRUE);
 }
 
-void game_start() {
+void game_start(Params* params) {
   while (1) {
     char sym;
     // Delay
-    for (int i = 0; i < 300000000; i++) {
-    }
+    usleep(200000);
     // Crear screen & refresh it
     clear();
-    refresh();
-
-    // UNCOMMENT TO SHOW BALL POSION AND BALL STATE
-    // printw("ball position: %d ", x_ball);
-    // printw("%d    ", y_ball);
-    // printw("state: %d ", stateX);
-    // printw("%d\n", stateY);
+    // refresh();
 
     // Display players count
-    printw("%20d%40d\n", count1, count2);
+    printw("%20d%40d\n", params->count.player_1, params->count.player_2);
     // Drawing y line
-    y_line_maker(x_field, y_field, x_ball, y_ball, x_racket1, y_racket1,
-                 x_racket2, y_racket2);
+    y_line_maker(params);
     // Getting user input
     sym = getch();
     // Validating user input
@@ -58,59 +50,63 @@ void game_start() {
         case 'q':
           // Exit
           endwin();
-          return 0;
+          return;
           break;
         case ' ':
           break;
         case 'a':
-          if (y_racket2 > (y_field - (y_field - 2))) {
-            y_racket2--;
+          if (params->right_rocket.y >
+              (params->field.width - (params->field.width - 2))) {
+            params->right_rocket.y--;
           }
           break;
         case 'z':
-          if (y_racket2 < (y_field - 1)) {
-            y_racket2++;
+          if (params->right_rocket.y < (params->field.width - 1)) {
+            params->right_rocket.y++;
           }
           break;
         case 'k':
-          if (y_racket1 > (y_field - (y_field - 2))) {
-            y_racket1--;
+          if (params->left_rocket.y >
+              (params->field.width - (params->field.width - 2))) {
+            params->left_rocket.y--;
           }
           break;
         case 'm':
-          if (y_racket1 < (y_field - 1)) {
-            y_racket1++;
+          if (params->left_rocket.y < (params->field.width - 1)) {
+            params->left_rocket.y++;
           }
           break;
       }
     }
     // Processing ball collisions
-    if ((x_ball == ((x_racket1 - 1)) &&
-         (y_ball == y_racket1 || y_ball == y_racket1 - 1 ||
-          y_ball == y_racket1 + 1)) ||
-        ((x_ball == (x_racket2 + 1)) &&
-         (y_ball == y_racket2 || y_ball == y_racket2 - 1 ||
-          y_ball == y_racket2 + 1))) {
-      stateX = stateX * (-1);
+    if ((params->ball.x == ((params->left_rocket.x - 1)) &&
+         (params->ball.y == params->left_rocket.y ||
+          params->ball.y == params->left_rocket.y - 1 ||
+          params->ball.y == params->left_rocket.y + 1)) ||
+        ((params->ball.x == (params->right_rocket.x + 1)) &&
+         (params->ball.y == params->right_rocket.y ||
+          params->ball.y == params->right_rocket.y - 1 ||
+          params->ball.y == params->right_rocket.y + 1))) {
+      params->ball.state_x = params->ball.state_x * (-1);
     }
-    if (y_ball == (y_field) || (y_ball == 1)) {
-      stateY = stateY * (-1);
+    if (params->ball.y == (params->field.width) || (params->ball.y == 1)) {
+      params->ball.state_y = params->ball.state_y * (-1);
     }
 
     // Moving ball
-    x_ball = x_ball_mover(x_ball, stateX);
-    y_ball = y_ball_mover(y_ball, stateY);
+    ball_x_mover(params);
+    ball_y_mover(params);
 
     // Processing players count
-    if (x_ball == 1) {
-      count2++;
-      x_ball = 40, y_ball = 13;
+    if (params->ball.x == 1) {
+      params->count.player_2++;
+      params->ball.x = 40, params->ball.y = 13;
     }
-    if (x_ball == 80) {
-      count1++;
-      x_ball = 40, y_ball = 13;
+    if (params->ball.x == 80) {
+      params->count.player_1++;
+      params->ball.x = 40, params->ball.y = 13;
     }
-    if (count2 == 21) {
+    if (params->count.player_2 == 21) {
       nodelay(stdscr, FALSE);
       clear();
       refresh();
@@ -118,9 +114,9 @@ void game_start() {
       refresh();
       getch();
       endwin();
-      return 0;
+      return;
     }
-    if (count1 == 21) {
+    if (params->count.player_1 == 21) {
       nodelay(stdscr, FALSE);
       clear();
       refresh();
@@ -128,24 +124,24 @@ void game_start() {
       refresh();
       getch();
       endwin();
-      return 0;
+      return;
     }
   }
 }
 
 // Functions definition
 // This fuction creates x line
-void x_line_maker(char ball_presence, char racket1_presence,
-                  char racket2_presence, int x_field, int x_ball, int x_racket1,
-                  int x_racket2) {
+void x_line_maker(Params* params) {
   printw("|");
-  for (int i = 1; i <= x_field; i++) {
-    if (i == x_ball && ball_presence == '1') {
+  for (int i = 1; i <= params->field.length; i++) {
+    if (i == params->ball.x && params->ball.ball_presence == 1) {
       printw("@");
       continue;
     }
-    if ((i == x_racket1 && racket1_presence == '1') ||
-        (i == x_racket2 && racket2_presence == '1')) {
+    if ((i == params->left_rocket.x &&
+         params->left_rocket.rocket_presence == 1) ||
+        (i == params->right_rocket.x &&
+         params->right_rocket.rocket_presence == 1)) {
       printw("|");
       continue;
     } else {
@@ -160,29 +156,27 @@ void x_line_maker(char ball_presence, char racket1_presence,
 }
 
 // This function creates y line and invoke function to create x line
-void y_line_maker(int x_field, int y_field, int x_ball, int y_ball,
-                  int x_racket1, int y_racket1, int x_racket2, int y_racket2) {
-  char ball_presence, racket1_presence, racket2_presence;
+void y_line_maker(Params* params) {
+  for (int i = 1; i <= params->field.width; i++) {
+    if (i == params->ball.y) {
+      params->ball.ball_presence = 1;
+    } else {
+      params->ball.ball_presence = 0;
+    }
+    if (i == params->left_rocket.y || i == params->left_rocket.y - 1 ||
+        i == params->left_rocket.y + 1) {
+      params->left_rocket.rocket_presence = 1;
+    } else {
+      params->left_rocket.rocket_presence = 0;
+    }
+    if (i == params->right_rocket.y || i == params->right_rocket.y - 1 ||
+        i == params->right_rocket.y + 1) {
+      params->right_rocket.rocket_presence = 1;
+    } else {
+      params->right_rocket.rocket_presence = 0;
+    }
 
-  for (int i = 1; i <= y_field; i++) {
-    if (i == y_ball) {
-      ball_presence = '1';
-    } else {
-      ball_presence = '0';
-    }
-    if (i == y_racket1 || i == y_racket1 - 1 || i == y_racket1 + 1) {
-      racket1_presence = '1';
-    } else {
-      racket1_presence = '0';
-    }
-    if (i == y_racket2 || i == y_racket2 - 1 || i == y_racket2 + 1) {
-      racket2_presence = '1';
-    } else {
-      racket2_presence = '0';
-    }
-
-    x_line_maker(ball_presence, racket1_presence, racket2_presence, x_field,
-                 x_ball, x_racket1, x_racket2);
+    x_line_maker(params);
     printw("\n");
   }
   printw(
@@ -191,6 +185,10 @@ void y_line_maker(int x_field, int y_field, int x_ball, int y_ball,
 }
 
 // Function to move ball at x axis
-int x_ball_mover(int x_ball, int stateX) { return (x_ball + 1 * stateX); }
+void ball_x_mover(Params* params) {
+  params->ball.x += 1 * params->ball.state_x;
+}
 // Function to move ball at y axis
-int y_ball_mover(int y_ball, int stateY) { return (y_ball + 1 * stateY); }
+void ball_y_mover(Params* params) {
+  params->ball.y += 1 * params->ball.state_y;
+}
